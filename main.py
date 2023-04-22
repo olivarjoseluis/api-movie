@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Body
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 app = FastAPI()
@@ -10,11 +10,23 @@ app.version = '1.0'
 
 class Movie(BaseModel):
     id: Optional[int] = None
-    title: str
-    overview: str
-    year: int
-    rating: float
-    category: str
+    title: str = Field(min_length=5, max_length=20)
+    overview: str = Field(min_length=30, max_length=35)
+    year: int = Field(ge=1906, le=2023)
+    rating: float = Field(ge=1, le=10)
+    category: str = Field(min_length=4, max_length=10)
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "id": 1,
+                "title": "Movie name",
+                "overview": "Overview Overview Overview Overview",
+                "year": 2024,
+                "rating": 10,
+                "category": "Drama"
+            }
+        }
 
 
 movies = [
@@ -114,7 +126,6 @@ def getMovies():
 @app.get('/movies/{id}', tags=['movies'])
 def getMovie(id: int):
     movie = list(filter(lambda x: x['id'] == id, movies))
-    # print(movie)
     return movie
 
 
