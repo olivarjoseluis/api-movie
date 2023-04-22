@@ -1,9 +1,21 @@
 from fastapi import FastAPI, Body
 from fastapi.responses import HTMLResponse
+from pydantic import BaseModel
+from typing import Optional
 
 app = FastAPI()
 app.title = "API Movie"
 app.version = '1.0'
+
+
+class Movie(BaseModel):
+    id: Optional[int] = None
+    title: str
+    overview: str
+    year: int
+    rating: float
+    category: str
+
 
 movies = [
     {
@@ -114,31 +126,24 @@ def getMovieByCategory(category: str, year: int):
 
 
 @app.post('/movies', tags=['movies'])
-def createMovie(id: int = Body(), title: str = Body(), overview: str = Body(), year: int = Body(), rating: float = Body(), category: str = Body()):
-    movies.append({
-        "id": id,
-        "title": title,
-        "overview": overview,
-        "year": year,
-        "rating": rating,
-        "category": category
-    })
+def createMovie(movie: Movie):
+    movies.append(movie)
     return movies
 
 
 @app.put('/movies/{id}', tags=['movies'])
-def updateMovie(id: int, title: str = Body(), overview: str = Body(), year: int = Body(), rating: float = Body(), category: str = Body()):
+def updateMovie(id: int, movie: Movie):
     movie = list(filter(lambda m: m['id'] == id, movies))
-    movie[0]['title'] = title
-    movie[0]['overview'] = overview
-    movie[0]['year'] = int(year)
-    movie[0]['rating'] = float(rating)
-    movie[0]['category'] = category
+    movie[0]['title'] = movie.title
+    movie[0]['overview'] = movie.overview
+    movie[0]['year'] = movie.year
+    movie[0]['rating'] = movie.rating
+    movie[0]['category'] = movie.category
     return movies
 
 
-@app.delete('/movies/{id}',tags=['movies'])
-def deleteMovie(id:int):
+@app.delete('/movies/{id}', tags=['movies'])
+def deleteMovie(id: int):
     movie = list(filter(lambda m: m['id'] == id, movies))
     movies.remove(movie[0])
     return movies
