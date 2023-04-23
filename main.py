@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Body, Path, Query
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 
 app = FastAPI()
 app.title = "API Movie"
@@ -118,42 +118,56 @@ def message():
     return 'Hello world'
 
 
-@app.get('/movies', tags=['movies'])
-def getMovies():
-    return movies
+@app.get('/movies', tags=['movies'], response_model=List[Movie], status_code=200)
+def getMovies() -> List[Movie]:
+    return JSONResponse(status_code=200, content=movies)
 
 
-@app.get('/movies/{id}', tags=['movies'])
-def getMovie(id: int = Path(ge=1, le=2000)):
+@app.get('/movies/{id}', tags=['movies'], response_model=Movie, status_code=200)
+def getMovie(id: int = Path(ge=1, le=2000)) -> Movie:
     movie = list(filter(lambda x: x['id'] == id, movies))
-    return movie
+    if (len(movie) > 0):
+        return JSONResponse(status_code=200, content=movie)
+    else:
+        return JSONResponse(status_code=404, content={"message": "We have a problem in this moment."})
 
 
-@app.get('/movies/', tags=['movies'])
-def getMovieByCategory(category: str = Query(min_length=5, max_length=10)):
-    listMovie = list(filter(lambda movie: movie['category'] == category, movies))
-    return listMovie
+@app.get('/movies/', tags=['movies'], response_model=List[Movie], status_code=200)
+def getMovieByCategory(category: str = Query(min_length=5, max_length=10)) -> List[Movie]:
+    listMovie = list(
+        filter(lambda movie: movie['category'] == category, movies))
+    if (len(listMovie) > 0):
+        return JSONResponse(status_code=200, content=listMovie)
+    else:
+        return JSONResponse(status_code=404, content={"message": "Have not been found movies for this category"})
 
 
-@app.post('/movies', tags=['movies'])
-def createMovie(movie: Movie):
+@app.post('/movies', tags=['movies'], response_model=dict, status_code=201)
+def createMovie(movie: Movie) -> dict:
     movies.append(movie)
-    return movies
+    return JSONResponse(status_code=201, content={"message": f"The movie '{movie.title}' has been saved."})
 
 
-@app.put('/movies/{id}', tags=['movies'])
-def updateMovie(id: int, movie: Movie):
+@app.put('/movies/{id}', tags=['movies'], response_model=dict, status_code=200)
+def updateMovie(id: int, movie: Movie) -> dict:
+    movieO = list(filter(lambda m: m['id'] == id, movies))
+    if (len(movieO) > 0):
+        movieO[0]['title'] = movie.title
+        movieO[0]['overview'] = movie.overview
+        movieO[0]['year'] = movie.year
+        movieO[0]['rating'] = movie.rating
+        movieO[0]['category'] = movie.category
+        return JSONResponse(status_code=200, content={"message": "The movie has been updated."})
+    else:
+        return JSONResponse(status_code=404, content={"message": "Movie hasn't been found."})
+
+
+@app.delete('/movies/{id}', tags=['movies'], response_model=dict, status_code=200)
+def deleteMovie(id: int) -> dict:
     movie = list(filter(lambda m: m['id'] == id, movies))
-    movie[0]['title'] = movie.title
-    movie[0]['overview'] = movie.overview
-    movie[0]['year'] = movie.year
-    movie[0]['rating'] = movie.rating
-    movie[0]['category'] = movie.category
-    return movies
-
-
-@app.delete('/movies/{id}', tags=['movies'])
-def deleteMovie(id: int):
-    movie = list(filter(lambda m: m['id'] == id, movies))
-    movies.remove(movie[0])
-    return movies
+    if (len(movie) > 0):
+        name = movie[0]['title']
+        movies.remove(movie[0])
+        return JSONResponse(status_code=200, content={"message": f"{name} has been deleted."})
+    else:
+        return JSONResponse(status_code=404, content={"message": "Movie hasn't been found."})
