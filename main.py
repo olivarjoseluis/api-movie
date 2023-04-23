@@ -1,11 +1,27 @@
-from fastapi import FastAPI, Body, Path, Query
+from fastapi import FastAPI, Body, Path, Query, Request, Depends
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 from typing import Optional, List
+from jwt_manager import createToken, validateToken
+from fastapi.security import HTTPBearer
+
 
 app = FastAPI()
 app.title = "API Movie"
 app.version = '1.0'
+
+
+class JWTBearer(HTTPBearer):
+    async def __call__(self, request: Request):
+        auth = await super().__call__(request)
+        data = validateToken(auth.credentials)
+        if data['email'] != "correo@correo.com":
+            raise HTTPException(status_code=403, detail="user forbidden")
+
+
+class User(BaseModel):
+    email: str
+    password: str
 
 
 class Movie(BaseModel):
@@ -118,7 +134,7 @@ def message():
     return 'Hello world'
 
 
-@app.get('/movies', tags=['movies'], response_model=List[Movie], status_code=200)
+@app.get('/movies', tags=['movies'], response_model=List[Movie], status_code=200, dependencies=[Depends(JWTBearer())])
 def getMovies() -> List[Movie]:
     return JSONResponse(status_code=200, content=movies)
 
@@ -171,3 +187,12 @@ def deleteMovie(id: int) -> dict:
         return JSONResponse(status_code=200, content={"message": f"{name} has been deleted."})
     else:
         return JSONResponse(status_code=404, content={"message": "Movie hasn't been found."})
+
+
+@app.post('/login', tags=['auth'])
+def login(user: User):
+    if user.email == "correo@correo.com" and user.password == "kokoro":
+        token: str = createToken(user.dict())
+        return JSONResponse(status_code=200, content=token)
+    else:
+        return JSONResponse(status_code=404, content={"message": "email or password not valid."})
